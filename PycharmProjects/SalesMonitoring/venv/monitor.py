@@ -1,57 +1,42 @@
-import requests
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
-import schedule
 import time
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 
-# 目标URL
-url = "https://www.stories.com/en_gbp/accessories/scarves/fall-winterscarves/product.two-tone-wool-scarf-blue.1238202001.html"  # 将此替换为你要监控的商品页面
 
-# 邮件通知设置（可选）
-def send_email(subject, body):
-    sender_email = "lu.yanting925@gmail.com"
-    receiver_email = "lu.yanting925@gmail.com"
-    password = "LYT31415926"
+# 设置 ChromeDriver 的路径
+chrome_driver_path = "/Users/yanting/Downloads/chromedriver-mac-arm64/chromedriver"
 
-    msg = MIMEMultipart()
-    msg['From'] = sender_email
-    msg['To'] = receiver_email
-    msg['Subject'] = subject
+# 设置浏览器选项（可选，headless模式让浏览器在后台运行）
+chrome_options = Options()
+chrome_options.add_argument("--headless")  # 无头模式，后台运行
 
-    msg.attach(MIMEText(body, 'plain'))
+# 启动 ChromeDriver
+service = Service(chrome_driver_path)
+driver = webdriver.Chrome(service=service, options=chrome_options)
 
-    with smtplib.SMTP('smtp.gmail.com', 587) as server:
-        server.starttls()
-        server.login(sender_email, password)
-        text = msg.as_string()
-        server.sendmail(sender_email, receiver_email, text)
+# 打开目标网页
+url = " https://www.stories.com/en_gbp/accessories/scarves/fall-winterscarves/product.two-tone-wool-scarf-blue.1238202001.html"  # 替换为你要检测的页面URL
+url_with_discount = "https://www.stories.com/en_gbp/clothing/jeans/slim-fit/product.slim-jeans-blue.1016785020.html"
+driver.get(url)
 
-def check_for_discount():
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-    }
+# 等待页面加载
+time.sleep(30)  # 可调整等待时间，确保页面加载完毕
 
-    # 获取页面内容
-    response = requests.get(url, headers=headers)
-    soup = BeautifulSoup(response.text, 'html.parser')
+# 获取整个页面的HTML内容
+page_content = driver.page_source
 
-    # 查找折扣信息的标识，例如 "Sale" 或 "折扣"
-    # 这一步需要根据页面实际的HTML结构来修改
-    discount_tag = soup.find(text=lambda t: "Sale" in t)
 
-    if discount_tag:
-        print("有折扣活动！")
-        # 如果有折扣，可以发邮件通知
-        send_email("折扣通知", f"产品有折扣了！查看页面：{url}")
-    else:
-        print("没有折扣")
+# 查找是否包含 "Sale" 或相关折扣信息
+if "percentageDiscount" in page_content:
+    print("该商品有折扣！")
+else:
+    print("该商品暂无折扣！")
 
-# 定时任务，每隔一小时检查一次
-schedule.every(1).hours.do(check_for_discount)
+# 关闭浏览器
+driver.quit()
 
-# 无限循环执行任务
-while True:
-    schedule.run_pending()
-    time.sleep(1)
+
+
